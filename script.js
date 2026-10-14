@@ -124,7 +124,4 @@ $("copyOut").onclick = () => {
 };
 [$("view"),$("add")].forEach(d => d.addEventListener("click", e => { if(e.target===d) d.close(); }));
 
-fetch("versek.json", {cache:"no-store"})
-  .then(r => r.json())
-  .then(d => { KOLTOK = d; build(); renderFilters(); render(); })
-  .catch(() => { $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">A versek.json nem tölthető be.<br>Helyben nyisd meg egy kis webszerverrel, vagy GitHub Pagesen.</div>`; });
+renderFilters(); render();
