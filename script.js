@@ -1,5 +1,5 @@
 /* ====== BEÁLLÍTÁS: ide másold be a Supabase adataidat (lásd setup.sql és az útmutató) ====== */
-const SUPABASE_URL = "https://nutmizhjgzqblkpzpbgt.supabase.co/rest/v1/";   // pl. https://abcdxyz.supabase.co
+const SUPABASE_URL = "https://nutmizhjgzqblkpzpbgt.supabase.co";   // pl. https://abcdxyz.supabase.co
 const SUPABASE_KEY = "sb_publishable_qZtMz4rHwBojgbejFTSuEw_8wqQIQHM";    // a "anon public" kulcs, ez nyilvános lehet
 /* ================================================================================ */
 
