@@ -1,7 +1,31 @@
-/* A versek a versek.json fájlban vannak, a költők és a versek ott szerkeszthetők. */
-let KOLTOK = {}, VERSEK = [];
-const build = () => { VERSEK = Object.entries(KOLTOK).flatMap(([author,list]) => list.map(v => ({tags:[], text:"", ...v, author}))); };
+/* ====== BEÁLLÍTÁS: ide másold be a Supabase adataidat (lásd setup.sql és az útmutató) ====== */
+const SUPABASE_URL = "https://nutmizhjgzqblkpzpbgt.supabase.co/rest/v1/";   // pl. https://abcdxyz.supabase.co
+const SUPABASE_KEY = "sb_publishable_qZtMz4rHwBojgbejFTSuEw_8wqQIQHM";    // a "anon public" kulcs, ez nyilvános lehet
+/* ================================================================================ */
+
+const KOLTOK = {};
+let VERSEK = [];
 const all = () => VERSEK;
+const configured = () => SUPABASE_URL.startsWith("https://") && !SUPABASE_KEY.startsWith("IDE_");
+const api = (path, opt = {}) => fetch(SUPABASE_URL + "/rest/v1/" + path, {
+  ...opt,
+  headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", ...(opt.headers || {}) }
+});
+async function load(){
+  if(!configured()){
+    $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">Az adatbázis még nincs beállítva.<br>Add meg a Supabase adatokat a script.js elején.</div>`;
+    return;
+  }
+  try {
+    const r = await api("versek?select=title,author,tags,text&order=title.asc");
+    if(!r.ok) throw new Error(r.status);
+    VERSEK = (await r.json()).map(v => ({ title:v.title, author:v.author, tags:v.tags || [], text:v.text || "" }));
+    if(activePoet !== "mind" && !VERSEK.some(v => v.author === activePoet)) activePoet = "mind";
+    renderFilters(); render();
+  } catch(e) {
+    if(!VERSEK.length) $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">A versek betöltése nem sikerült. Próbáld újra később.</div>`;
+  }
+}
 
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -65,7 +89,7 @@ function render(){
     (!nq || norm(v.title+" "+v.author+" "+v.tags.join(" ")+" "+v.text).includes(nq)));
   list.sort((a,b)=> a.title.localeCompare(b.title,"hu") * (sort==="abc"?1:-1));
   $("count").textContent = list.length + " vers";
-  if(!list.length){ $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">${all().length ? "Nincs találat." : "Még nincs egyetlen vers sem.<br>Add hozzá őket a versek.json fájlban."}</div>`; return; }
+  if(!list.length){ $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">${all().length ? "Nincs találat." : "Még nincs egyetlen vers sem.<br>Kattints az „+ Új vers” gombra, és add hozzá az elsőt."}</div>`; return; }
   $("grid").innerHTML = list.map(v => `
     <button class="card${isLove(v)?" love":""}" data-i="${v.i}">${isLove(v)?'<span class="hearts" aria-hidden="true"><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i></span>':""}
       <h2>${hl(v.title,q)}</h2>
@@ -91,7 +115,7 @@ function render(){
 function openPoem(i){
   const v = all()[i];
   $("viewBody").innerHTML = `<h2>${esc(v.title)}</h2><div class="hint">${esc(v.author)}</div>
-    <div class="poem">${v.text ? esc(v.text) : "<span class='hint'>A vers szövege még hiányzik. Add hozzá a versek.json fájlban.</span>"}</div>
+    <div class="poem">${v.text ? esc(v.text) : "<span class='hint'>A vers szövege még hiányzik. </span>"}</div>
     <div class="tags" style="margin-bottom:18px">${v.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
     <div class="row"><button class="btn ghost" id="closeView">Bezár</button></div>`;
   $("closeView").onclick = () => $("view").close();
@@ -101,27 +125,29 @@ function openPoem(i){
 $("q").addEventListener("input", render);
 $("addBtn").onclick = () => $("add").showModal();
 $("cancelAdd").onclick = () => $("add").close();
-$("saveAdd").onclick = () => {
+$("saveAdd").onclick = async () => {
   const title = $("nTitle").value.trim();
   if(!title){ $("nTitle").focus(); return; }
-  const author = $("nAuthor").value.trim() || "Ismeretlen";
-  const v = {
-    title,
-    tags: $("nTags").value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean),
-    text: $("nText").value.trim()
-  };
-  KOLTOK[author] = (KOLTOK[author] || []).filter(e => e.title !== title).concat(v);
-  build(); renderFilters(); render();
-  $("out").value = JSON.stringify(KOLTOK, null, 2);
-  $("outBox").hidden = false;
-  $("out").scrollIntoView({block:"nearest"});
-};
-$("copyOut").onclick = () => {
-  $("out").select();
-  try { navigator.clipboard.writeText($("out").value); } catch(e) { document.execCommand("copy"); }
-  $("copyOut").textContent = "Másolva ✓";
-  setTimeout(() => $("copyOut").textContent = "JSON másolása", 1500);
+  if(!configured()){ $("err").textContent = "Az adatbázis még nincs beállítva."; return; }
+  const btn = $("saveAdd"); btn.disabled = true; btn.textContent = "Mentés…"; $("err").textContent = "";
+  try {
+    const r = await api("versek", { method:"POST", headers:{ Prefer:"return=minimal" }, body: JSON.stringify({
+      title,
+      author: $("nAuthor").value.trim() || "Ismeretlen",
+      tags: $("nTags").value.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean),
+      text: $("nText").value.trim()
+    })});
+    if(!r.ok) throw new Error(r.status);
+    ["nTitle","nTags","nText"].forEach(id => $(id).value = "");
+    $("add").close();
+    await load();
+  } catch(e) {
+    $("err").textContent = "A mentés nem sikerült. Ellenőrizd a mezőket (a cím max. 200, a szöveg max. 20 000 karakter), és próbáld újra.";
+  }
+  btn.disabled = false; btn.textContent = "Mentés";
 };
 [$("view"),$("add")].forEach(d => d.addEventListener("click", e => { if(e.target===d) d.close(); }));
 
-renderFilters(); render();
+load();
+setInterval(load, 20000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) load(); });
