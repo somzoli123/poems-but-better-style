@@ -1,22 +1,7 @@
-/* ====== ITT TUDOD EGYSZERŰEN HOZZÁADNI A KÖLTŐKET ÉS VERSEKET ======
-   Új költő: írj be egy új sort  "Név": [ ... ],
-   Új vers:  {title:"Cím", tags:["téma"], text:`a vers szövege`}              */
-const KOLTOK = {
-  // "Petőfi Sándor": [
-  //   {title:"Vers címe", tags:["szerelem"], text:`a vers szövege`},
-  // ],
-};
-const VERSEK = Object.entries(KOLTOK).flatMap(([author,list]) => list.map(v => ({...v, author})));
-
-let extra = [];
-try { extra = JSON.parse(localStorage.getItem("extraVersek") || "[]"); } catch(e) { extra = []; }
-let hidden = [], hiddenPoets = [];
-try { const d = JSON.parse(localStorage.getItem("torolt") || "{}"); hidden = d.h || []; hiddenPoets = d.p || []; } catch(e) {}
-const pid = v => v.author + "|" + v.title;
-const all = () => VERSEK.concat(extra).filter(v => !hidden.includes(pid(v)) && !hiddenPoets.includes(v.author));
-const persist = () => { try { localStorage.setItem("extraVersek", JSON.stringify(extra)); localStorage.setItem("torolt", JSON.stringify({h:hidden,p:hiddenPoets})); } catch(e) {} };
-function delPoem(v){ extra = extra.filter(e => pid(e) !== pid(v)); if(!hidden.includes(pid(v))) hidden.push(pid(v)); persist(); }
-function delPoet(n){ extra = extra.filter(e => e.author !== n); if(!hiddenPoets.includes(n)) hiddenPoets.push(n); activePoet = "mind"; persist(); }
+/* A versek a versek.json fájlban vannak, a költők és a versek ott szerkeszthetők. */
+let KOLTOK = {}, VERSEK = [];
+const build = () => { VERSEK = Object.entries(KOLTOK).flatMap(([author,list]) => list.map(v => ({tags:[], text:"", ...v, author}))); };
+const all = () => VERSEK;
 
 const $ = id => document.getElementById(id);
 const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -61,7 +46,7 @@ function hl(text, q){
 }
 
 function renderFilters(){
-  const names = [...new Set([...Object.keys(KOLTOK), ...all().map(v=>v.author)])].filter(n => !hiddenPoets.includes(n));
+  const names = [...new Set([...Object.keys(KOLTOK), ...all().map(v=>v.author)])];
   const cnt = n => all().filter(v=>v.author===n).length;
   $("filters").innerHTML = `<button class="chip ${activePoet==="mind"?"on":""}" data-t="mind">Minden költő</button>`
     + names.map(n => `<button class="chip ${n===activePoet?"on":""}" data-t="${esc(n)}">${esc(n)} <small>${cnt(n)}</small></button>`).join("")
@@ -79,12 +64,8 @@ function render(){
     (activePoet==="mind" || v.author===activePoet) &&
     (!nq || norm(v.title+" "+v.author+" "+v.tags.join(" ")+" "+v.text).includes(nq)));
   list.sort((a,b)=> a.title.localeCompare(b.title,"hu") * (sort==="abc"?1:-1));
-  $("count").innerHTML = list.length + " vers" + (activePoet !== "mind" ? ` <button class="del" id="delPoet">Költő törlése</button>` : "");
-  if($("delPoet")) $("delPoet").onclick = function(){
-    if(this.dataset.s){ delPoet(activePoet); renderFilters(); render(); }
-    else { this.dataset.s = 1; this.textContent = "Biztosan törlöd az összes versével?"; this.classList.add("sure"); }
-  };
-  if(!list.length){ $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">${all().length ? "Nincs találat." : "Még nincs egyetlen vers sem.<br>Kattints az „+ Új vers” gombra, és add hozzá az elsőt."}</div>`; return; }
+  $("count").textContent = list.length + " vers";
+  if(!list.length){ $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">${all().length ? "Nincs találat." : "Még nincs egyetlen vers sem.<br>Add hozzá őket a versek.json fájlban."}</div>`; return; }
   $("grid").innerHTML = list.map(v => `
     <button class="card${isLove(v)?" love":""}" data-i="${v.i}">${isLove(v)?'<span class="hearts" aria-hidden="true"><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i><i>♥</i></span>':""}
       <h2>${hl(v.title,q)}</h2>
@@ -110,14 +91,10 @@ function render(){
 function openPoem(i){
   const v = all()[i];
   $("viewBody").innerHTML = `<h2>${esc(v.title)}</h2><div class="hint">${esc(v.author)}</div>
-    <div class="poem">${v.text ? esc(v.text) : "<span class='hint'>A vers szövege még hiányzik. Add hozzá a VERSEK listában vagy az „Új vers” gombbal.</span>"}</div>
+    <div class="poem">${v.text ? esc(v.text) : "<span class='hint'>A vers szövege még hiányzik. Add hozzá a versek.json fájlban.</span>"}</div>
     <div class="tags" style="margin-bottom:18px">${v.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>
-    <div class="row"><button class="del" id="delPoem">Vers törlése</button><button class="btn ghost" id="closeView">Bezár</button></div>`;
+    <div class="row"><button class="btn ghost" id="closeView">Bezár</button></div>`;
   $("closeView").onclick = () => $("view").close();
-  $("delPoem").onclick = function(){
-    if(this.dataset.s){ delPoem(v); $("view").close(); renderFilters(); render(); }
-    else { this.dataset.s = 1; this.textContent = "Biztosan törlöd?"; this.classList.add("sure"); }
-  };
   $("view").showModal();
 }
 
@@ -127,19 +104,27 @@ $("cancelAdd").onclick = () => $("add").close();
 $("saveAdd").onclick = () => {
   const title = $("nTitle").value.trim();
   if(!title){ $("nTitle").focus(); return; }
+  const author = $("nAuthor").value.trim() || "Ismeretlen";
   const v = {
-    title, author: $("nAuthor").value.trim() || "Ismeretlen",
+    title,
     tags: $("nTags").value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean),
     text: $("nText").value.trim()
   };
-  hiddenPoets = hiddenPoets.filter(p => p !== v.author);
-  hidden = hidden.filter(h => h !== pid(v));
-  extra = extra.filter(e => pid(e) !== pid(v));
-  extra.push(v);
-  persist();
-  ["nTitle","nTags","nText"].forEach(id => $(id).value = "");
-  $("add").close(); renderFilters(); render();
+  KOLTOK[author] = (KOLTOK[author] || []).filter(e => e.title !== title).concat(v);
+  build(); renderFilters(); render();
+  $("out").value = JSON.stringify(KOLTOK, null, 2);
+  $("outBox").hidden = false;
+  $("out").scrollIntoView({block:"nearest"});
+};
+$("copyOut").onclick = () => {
+  $("out").select();
+  try { navigator.clipboard.writeText($("out").value); } catch(e) { document.execCommand("copy"); }
+  $("copyOut").textContent = "Másolva ✓";
+  setTimeout(() => $("copyOut").textContent = "JSON másolása", 1500);
 };
 [$("view"),$("add")].forEach(d => d.addEventListener("click", e => { if(e.target===d) d.close(); }));
 
-renderFilters(); render();
+fetch("versek.json", {cache:"no-store"})
+  .then(r => r.json())
+  .then(d => { KOLTOK = d; build(); renderFilters(); render(); })
+  .catch(() => { $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">A versek.json nem tölthető be.<br>Helyben nyisd meg egy kis webszerverrel, vagy GitHub Pagesen.</div>`; });

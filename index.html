@@ -29,14 +29,15 @@
 
 <dialog id="add"><div class="dlg">
   <h2>Új vers hozzáadása</h2>
-  <p class="hint">A hozzáadott versek ezen a böngészőn megmaradnak. Állandó hozzáadáshoz a fájl elején lévő <code>KOLTOK</code> listát bővítsd.</p>
+  <p class="hint">Az oldal csak előnézetet mutat. Mentés után kapsz egy kész <code>versek.json</code> tartalmat: másold ki, és illeszd be a GitHubon a <code>versek.json</code> fájlba, ezzel mindenkinél megjelenik.</p>
   <label>Cím</label><input class="f" id="nTitle">
   <label>Költő (új név beírásával új szűrő jön létre)</label><input class="f" id="nAuthor" list="poets" placeholder="Válassz vagy írj be új költőt"><datalist id="poets"></datalist>
   <label>Témák (vesszővel elválasztva)</label><input class="f" id="nTags" placeholder="szerelem, ősz">
   <label>A vers szövege</label><textarea class="f" id="nText"></textarea>
+  <div id="outBox" hidden><label>Kész versek.json tartalom</label><textarea class="f" id="out" readonly></textarea><div class="row" style="margin-top:10px"><button class="btn" id="copyOut">JSON másolása</button></div></div>
   <div class="row" style="margin-top:18px">
-    <button class="btn ghost" id="cancelAdd">Mégse</button>
-    <button class="btn" id="saveAdd">Mentés</button>
+    <button class="btn ghost" id="cancelAdd">Bezár</button>
+    <button class="btn" id="saveAdd">JSON készítése</button>
   </div>
 </div></dialog>
 
