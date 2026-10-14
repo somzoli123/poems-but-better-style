@@ -1,6 +1,6 @@
 /* ====== BEÁLLÍTÁS: ide másold be a Supabase adataidat (lásd setup.sql és az útmutató) ====== */
 const SUPABASE_URL = "https://nutmizhjgzqblkpzpbgt.supabase.co";   // pl. https://abcdxyz.supabase.co
-const SUPABASE_KEY = "sb_publishable_qZtMz4rHwBojgbejFTSuEw_8wqQIQHM";    // a "anon public" kulcs, ez nyilvános lehet
+const SUPABASE_KEY = "sb_publishable_qZtMz4rHwBojgbejFTSuEw_8wqQIQHM";    // publishable kulcs, ez nyilvános lehet
 /* ================================================================================ */
 
 const KOLTOK = {};
@@ -9,7 +9,7 @@ const all = () => VERSEK;
 const configured = () => SUPABASE_URL.startsWith("https://") && !SUPABASE_KEY.startsWith("IDE_");
 const api = (path, opt = {}) => fetch(SUPABASE_URL + "/rest/v1/" + path, {
   ...opt,
-  headers: { apikey: SUPABASE_KEY, Authorization: "Bearer " + SUPABASE_KEY, "Content-Type": "application/json", ...(opt.headers || {}) }
+  headers: { apikey: SUPABASE_KEY, ...(SUPABASE_KEY.startsWith("eyJ") ? { Authorization: "Bearer " + SUPABASE_KEY } : {}), "Content-Type": "application/json", ...(opt.headers || {}) }
 });
 async function load(){
   if(!configured()){
@@ -18,11 +18,12 @@ async function load(){
   }
   try {
     const r = await api("versek?select=title,author,tags,text&order=title.asc");
-    if(!r.ok) throw new Error(r.status);
+    if(!r.ok) throw new Error(r.status + " " + (await r.text()));
     VERSEK = (await r.json()).map(v => ({ title:v.title, author:v.author, tags:v.tags || [], text:v.text || "" }));
     if(activePoet !== "mind" && !VERSEK.some(v => v.author === activePoet)) activePoet = "mind";
     renderFilters(); render();
   } catch(e) {
+    console.error("Betöltési hiba:", e);
     if(!VERSEK.length) $("grid").innerHTML = `<div class="empty" style="grid-column:1/-1">A versek betöltése nem sikerült. Próbáld újra később.</div>`;
   }
 }
@@ -137,12 +138,12 @@ $("saveAdd").onclick = async () => {
       tags: $("nTags").value.split(",").map(t=>t.trim().toLowerCase()).filter(Boolean),
       text: $("nText").value.trim()
     })});
-    if(!r.ok) throw new Error(r.status);
+    if(!r.ok) throw new Error(r.status + " " + (await r.text()));
     ["nTitle","nTags","nText"].forEach(id => $(id).value = "");
     $("add").close();
     await load();
   } catch(e) {
-    $("err").textContent = "A mentés nem sikerült. Ellenőrizd a mezőket (a cím max. 200, a szöveg max. 20 000 karakter), és próbáld újra.";
+    $("err").textContent = "A mentés nem sikerült: " + String(e.message).slice(0, 300);
   }
   btn.disabled = false; btn.textContent = "Mentés";
 };
