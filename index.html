@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Versek</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Versek<span>.</span></h1>
+      <p class="sub">Keress cím, szöveg vagy téma alapján, vagy szűrj költő szerint.</p>
+    </div>
+    <button class="btn" id="addBtn">+ Új vers</button>
+  </header>
+
+  <div class="search">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Keresés a versek között…" autocomplete="off">
+  </div>
+  <div class="filters" id="filters"></div>
+  <div class="count" id="count"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<dialog id="view"><div class="dlg" id="viewBody"></div></dialog>
+
+<dialog id="add"><div class="dlg">
+  <h2>Új vers hozzáadása</h2>
+  <p class="hint">A hozzáadott versek ezen a böngészőn megmaradnak. Állandó hozzáadáshoz a fájl elején lévő <code>KOLTOK</code> listát bővítsd.</p>
+  <label>Cím</label><input class="f" id="nTitle">
+  <label>Költő (új név beírásával új szűrő jön létre)</label><input class="f" id="nAuthor" list="poets" placeholder="Válassz vagy írj be új költőt"><datalist id="poets"></datalist>
+  <label>Témák (vesszővel elválasztva)</label><input class="f" id="nTags" placeholder="szerelem, ősz">
+  <label>A vers szövege</label><textarea class="f" id="nText"></textarea>
+  <div class="row" style="margin-top:18px">
+    <button class="btn ghost" id="cancelAdd">Mégse</button>
+    <button class="btn" id="saveAdd">Mentés</button>
+  </div>
+</div></dialog>
+
+<script src="script.js"></script>
+</body>
+</html>
